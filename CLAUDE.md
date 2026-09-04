@@ -7,7 +7,7 @@ no deck, no shuffling, no hand evaluation — humans compare hands and the host 
 
 - **One Node process, all game state in memory** (`games` Map). No Redis, no database.
   Single-instance deployment (Render free tier or a phone on LAN) — there is nothing to share
-  state *with*. Redis/Postgres are explicitly v2+ if ever.
+  state _with_. Redis/Postgres are explicitly v2+ if ever.
 - **Same codebase runs both modes**: LAN (phone/laptop server, no `PUBLIC_URL`) and cloud
   (Render, `PUBLIC_URL` set). Never add a dependency that breaks the LAN mode.
 - **Clients are backup, never authority.** Server broadcasts full state + a snapshot on every
@@ -19,7 +19,7 @@ no deck, no shuffling, no hand evaluation — humans compare hands and the host 
 - Snapshot ordering: tuple compare `(hand, streetIdx, streetLog.length)` — never a decimal or
   string compare.
 - **Chip conservation invariant**: `sum(stacks) + sum(committedStreet) + pot + pots.remaining
-  === totalChips`, asserted after every money movement (`assertConservation`). Any change to
+=== totalChips`, asserted after every money movement (`assertConservation`). Any change to
   money flow must keep this passing. Restore rejects snapshots that fail it (tamper check).
 - `applyAction(game, token, action)` is the only place chips move during a hand. Keep it that
   way — sockets/UI/host controls call it, never mutate chips directly.
@@ -41,7 +41,7 @@ no deck, no shuffling, no hand evaluation — humans compare hands and the host 
 ## Operational behavior
 
 - Client heartbeat every 2 min (`{type:"ping"}`) — required: Render's 15-min idle timer only
-  resets on inbound *messages*, not open sockets.
+  resets on inbound _messages_, not open sockets.
 - Conditional self-ping: every 10 min the server fetches `PUBLIC_URL/health` only if a game is
   active and touched within 2h. Off when `PUBLIC_URL` unset (LAN). Never make it unconditional.
 - Rooms untouched 12h are swept. Free-tier filesystem is ephemeral — never write state to disk.

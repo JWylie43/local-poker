@@ -21,8 +21,8 @@ so a server restart is recoverable.
   Tampered snapshots are rejected by a chip-conservation check.
 - Chip conservation assert after every money movement (server logs + warns the table on mismatch)
 - Client heartbeat every 2 min (keeps Render's idle timer reset while anyone has the page open)
-- Conditional **self-ping**: server pings its own public URL every 10 min *only while a game is
-  active and touched within 2h*, so it stays awake through dinner but sleeps when abandoned
+- Conditional **self-ping**: server pings its own public URL every 10 min _only while a game is
+  active and touched within 2h_, so it stays awake through dinner but sleeps when abandoned
 - Screen Wake Lock on the host's phone while the tab is visible
 - Room sweep: rooms untouched for 12h are deleted
 
@@ -34,7 +34,7 @@ npm start          # http://localhost:3000
 ```
 
 Everyone on the same wifi/hotspot opens `http://<your-LAN-IP>:3000` and joins with the room code.
-(To run the server *on a phone*, use Termux on Android — `pkg install nodejs`, clone, `npm start`.)
+(To run the server _on a phone_, use Termux on Android — `pkg install nodejs`, clone, `npm start`.)
 
 No `PUBLIC_URL` set → the self-ping is off (irrelevant on LAN).
 
@@ -45,10 +45,11 @@ No `PUBLIC_URL` set → the self-ping is off (irrelevant on LAN).
    - Build: `npm install` · Start: `npm start` · Instance type: **Free**
 3. After the first deploy, add an environment variable:
    - `PUBLIC_URL` = `https://<your-service>.onrender.com`
-   (this enables the self-keep-alive; without it the service sleeps after 15 idle minutes)
+     (this enables the self-keep-alive; without it the service sleeps after 15 idle minutes)
 4. Share `https://<your-service>.onrender.com/?g=CODE`.
 
 Notes for the free tier:
+
 - First visit after sleep takes ~1 min to wake. The page just loads slow once; then it's instant.
 - Render may restart free services at any time. If that happens mid-game, everyone reloads,
   the app offers the newest phone backup, host taps **Restore**.
