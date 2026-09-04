@@ -17,7 +17,9 @@ const RESTORE_HOST_WAIT_MS = 60 * 1000; // after this, any player may restore
 
 const app = express();
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/health", (_req, res) => {return res.json({ ok: true, games: games.size })});
+app.get("/health", (_req, res) => {
+  return res.json({ ok: true, games: games.size });
+});
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
@@ -27,17 +29,22 @@ const games = new Map();
 const pending = new Map();
 
 /* ---------------------------------------------------------------- utils */
-const rid = (n = 12) => {return crypto.randomBytes(n).toString("base64url")};
+const rid = (n = 12) => {
+  return crypto.randomBytes(n).toString("base64url");
+};
 const roomCode = () => {
   const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no confusable chars
   let c;
   do {
-    c = Array.from({ length: 5 }, () => {return A[crypto.randomInt(A.length)]}).join("");
+    c = Array.from({ length: 5 }, () => {
+      return A[crypto.randomInt(A.length)];
+    }).join("");
   } while (games.has(c));
   return c;
 };
-const streetIdx = (s) =>
-  {return s === null ? -1 : STREETS.indexOf(s) === -1 ? STREETS.length : STREETS.indexOf(s)};
+const streetIdx = (s) => {
+  return s === null ? -1 : STREETS.indexOf(s) === -1 ? STREETS.length : STREETS.indexOf(s);
+};
 /** snapshot ordering: (hand, streetIdx, streetLog.length) — action count derived, never stored */
 function seqOf(g) {
   return { hand: g.hand, street: streetIdx(g.street), actions: g.streetLog.length };
@@ -62,8 +69,11 @@ function newGame(hostToken, hostName, cfg) {
       straddleAllowed: !!cfg.straddleAllowed,
       ritAllowed: cfg.ritAllowed !== false,
       shortRaiseReopens: false, // house rule: short all-in does NOT reopen action
+      autoDeal: cfg.autoDeal !== false, // next hand starts by itself after a hand ends
+      autoDealDelayMs: Math.max(0, Math.min(30000, Math.floor(cfg.autoDealDelayMs ?? 5000))),
     },
     state: "idle", // idle | hand | showdown
+    paused: false, // host: stop auto-dealing after the current hand
     hand: 0,
     street: null,
     buttonSeat: -1,
@@ -84,13 +94,26 @@ function newGame(hostToken, hostName, cfg) {
   return g;
 }
 
-function seatPlayer(g, token, name, stack) {
-  const seat = g.players.length ? Math.max(...g.players.map((p) => {return p.seat})) + 1 : 0;
+const MAX_SEATS = 10;
+function seatPlayer(g, token, name, stack, wantSeat) {
+  const taken = new Set(
+    alive(g).map((p) => {
+      return p.seat;
+    })
+  );
+  let seat = wantSeat;
+  if (!Number.isInteger(seat)) {
+    seat = 0;
+    while (taken.has(seat)) seat++;
+  }
+  if (seat < 0 || seat >= MAX_SEATS) throw `Seats are 0-${MAX_SEATS - 1}.`;
+  if (taken.has(seat)) throw "That seat is taken.";
   g.players.push({
     token,
     name,
     seat,
     stack,
+    pendingChips: 0, // host top-ups queued mid-hand, applied when the hand ends
     committedStreet: 0,
     committedHand: 0,
     folded: false,
@@ -104,16 +127,40 @@ function seatPlayer(g, token, name, stack) {
   return seat;
 }
 
-const alive = (g) => {return g.players.filter((p) => {return !p.removed})};
-const inHand = (g) => {return alive(g).filter((p) => {return p.inHand && !p.folded})};
-const canAct = (g) => {return inHand(g).filter((p) => {return !p.allIn})};
-const bySeat = (g, s) => {return g.players.find((p) => {return p.seat === s && !p.removed})};
-const byToken = (g, t) => {return g.players.find((p) => {return p.token === t && !p.removed})};
+const alive = (g) => {
+  return g.players.filter((p) => {
+    return !p.removed;
+  });
+};
+const inHand = (g) => {
+  return alive(g).filter((p) => {
+    return p.inHand && !p.folded;
+  });
+};
+const canAct = (g) => {
+  return inHand(g).filter((p) => {
+    return !p.allIn;
+  });
+};
+const bySeat = (g, s) => {
+  return g.players.find((p) => {
+    return p.seat === s && !p.removed;
+  });
+};
+const byToken = (g, t) => {
+  return g.players.find((p) => {
+    return p.token === t && !p.removed;
+  });
+};
 
 function nextSeat(g, from, filter) {
   const seats = alive(g)
-    .map((p) => {return p.seat})
-    .sort((a, b) => {return a - b});
+    .map((p) => {
+      return p.seat;
+    })
+    .sort((a, b) => {
+      return a - b;
+    });
   if (!seats.length) return -1;
   let i = seats.indexOf(from);
   for (let k = 1; k <= seats.length; k++) {
@@ -126,9 +173,15 @@ function nextSeat(g, from, filter) {
 
 function assertConservation(g) {
   const sum =
-    alive(g).reduce((a, p) => {return a + p.stack + p.committedStreet}, 0) +
+    alive(g).reduce((a, p) => {
+      return a + p.stack + p.committedStreet;
+    }, 0) +
     g.pot +
-    (g.pots ? g.pots.reduce((a, q) => {return a + q.remaining}, 0) : 0);
+    (g.pots
+      ? g.pots.reduce((a, q) => {
+          return a + q.remaining;
+        }, 0)
+      : 0);
   if (sum !== g.totalChips) {
     console.error(`[${g.code}] CHIP LEAK: have ${sum}, expected ${g.totalChips}`);
     g.notice = `⚠ Chip accounting mismatch (${sum} vs ${g.totalChips}). Host: verify stacks.`;
@@ -137,7 +190,9 @@ function assertConservation(g) {
 
 /* ------------------------------------------------------- hand lifecycle */
 function startHand(g) {
-  const ready = alive(g).filter((p) => {return p.stack > 0});
+  const ready = alive(g).filter((p) => {
+    return p.stack > 0;
+  });
   if (ready.length < 2) throw "Need 2+ players with chips.";
   g.hand += 1;
   g.state = "hand";
@@ -158,22 +213,37 @@ function startHand(g) {
     });
     p.inHand = p.stack > 0;
   }
-  g.buttonSeat = g.buttonSeat === -1 ? ready[0].seat : nextSeat(g, g.buttonSeat, (p) => {return p.inHand});
+  g.buttonSeat =
+    g.buttonSeat === -1
+      ? ready[0].seat
+      : nextSeat(g, g.buttonSeat, (p) => {
+          return p.inHand;
+        });
 
   const headsUp = inHand(g).length === 2;
-  const sbSeat = headsUp ? g.buttonSeat : nextSeat(g, g.buttonSeat, (p) => {return p.inHand});
-  const bbSeat = nextSeat(g, sbSeat, (p) => {return p.inHand});
+  const sbSeat = headsUp
+    ? g.buttonSeat
+    : nextSeat(g, g.buttonSeat, (p) => {
+        return p.inHand;
+      });
+  const bbSeat = nextSeat(g, sbSeat, (p) => {
+    return p.inHand;
+  });
   post(g, bySeat(g, sbSeat), g.config.smallBlind, "small blind");
   post(g, bySeat(g, bbSeat), g.config.bigBlind, "big blind");
 
   let currentBet = g.config.bigBlind;
   let lastFullRaiseSize = g.config.bigBlind;
-  let firstToAct = nextSeat(g, bbSeat, (p) => {return p.inHand && !p.allIn});
+  let firstToAct = nextSeat(g, bbSeat, (p) => {
+    return p.inHand && !p.allIn;
+  });
 
   // Single UTG straddle (posted blind, straddler acts last preflop)
   const utg = bySeat(
     g,
-    nextSeat(g, bbSeat, (p) => {return p.inHand})
+    nextSeat(g, bbSeat, (p) => {
+      return p.inHand;
+    })
   );
   if (
     g.config.straddleAllowed &&
@@ -187,7 +257,9 @@ function startHand(g) {
     post(g, utg, amt, "straddle");
     currentBet = utg.committedStreet;
     lastFullRaiseSize = currentBet - g.config.bigBlind || g.config.bigBlind;
-    firstToAct = nextSeat(g, utg.seat, (p) => {return p.inHand && !p.allIn});
+    firstToAct = nextSeat(g, utg.seat, (p) => {
+      return p.inHand && !p.allIn;
+    });
   }
   g.straddleNextToken = null;
   g.betting = { currentBet, lastFullRaiseSize, toActSeat: firstToAct };
@@ -298,18 +370,19 @@ function advanceTurn(g) {
   const live = inHand(g);
   if (live.length === 1) return endByFolds(g, live[0]);
   if (settleStreetIfDone(g)) return;
-  g.betting.toActSeat = nextSeat(
-    g,
-    g.betting.toActSeat,
-    (p) =>
-      {return p.inHand && !p.folded && !p.allIn && !(p.acted && p.committedStreet === g.betting.currentBet)}
-  );
+  g.betting.toActSeat = nextSeat(g, g.betting.toActSeat, (p) => {
+    return (
+      p.inHand && !p.folded && !p.allIn && !(p.acted && p.committedStreet === g.betting.currentBet)
+    );
+  });
 }
 
 function streetDone(g) {
   const actors = canAct(g);
   if (actors.length === 0) return true; // everyone all-in
-  return actors.every((p) => {return p.acted && p.committedStreet === g.betting.currentBet});
+  return actors.every((p) => {
+    return p.acted && p.committedStreet === g.betting.currentBet;
+  });
 }
 
 function settleStreetIfDone(g, force = false) {
@@ -329,7 +402,9 @@ function settleStreetIfDone(g, force = false) {
   g.betting = {
     currentBet: 0,
     lastFullRaiseSize: g.config.bigBlind,
-    toActSeat: nextSeat(g, g.buttonSeat, (p) => {return p.inHand && !p.folded && !p.allIn}),
+    toActSeat: nextSeat(g, g.buttonSeat, (p) => {
+      return p.inHand && !p.folded && !p.allIn;
+    }),
   };
   return true;
 }
@@ -357,17 +432,37 @@ function toShowdown(g, earlyRunout) {
 /** Layered side pots from hand-total commitments. Eligibility = non-folded contributors. */
 function computePots(g) {
   const contrib = alive(g)
-    .filter((p) => {return p.committedHand > 0})
-    .map((p) => {return { seat: p.seat, amt: p.committedHand, eligible: p.inHand && !p.folded }});
-  const levels = [...new Set(contrib.filter((c) => {return c.eligible}).map((c) => {return c.amt}))].sort(
-    (a, b) => {return a - b}
-  );
+    .filter((p) => {
+      return p.committedHand > 0;
+    })
+    .map((p) => {
+      return { seat: p.seat, amt: p.committedHand, eligible: p.inHand && !p.folded };
+    });
+  const levels = [
+    ...new Set(
+      contrib
+        .filter((c) => {
+          return c.eligible;
+        })
+        .map((c) => {
+          return c.amt;
+        })
+    ),
+  ].sort((a, b) => {
+    return a - b;
+  });
   const pots = [];
   let prev = 0;
   for (const level of levels) {
     let amount = 0;
     for (const c of contrib) amount += Math.max(0, Math.min(c.amt, level) - prev);
-    const eligible = contrib.filter((c) => {return c.eligible && c.amt >= level}).map((c) => {return c.seat});
+    const eligible = contrib
+      .filter((c) => {
+        return c.eligible && c.amt >= level;
+      })
+      .map((c) => {
+        return c.seat;
+      });
     if (amount > 0) pots.push({ amount, eligible, remaining: amount });
     prev = level;
   }
@@ -428,7 +523,37 @@ function endHand(g) {
     p.allIn = false;
     p.acted = false;
     p.committedHand = 0;
+    if (p.pendingChips) {
+      // top-ups queued mid-hand land now (clamped so a deduction can't go below 0)
+      const apply = Math.max(p.pendingChips, -p.stack);
+      p.stack += apply;
+      g.totalChips += apply;
+      p.pendingChips = 0;
+    }
   }
+  scheduleAutoDeal(g);
+}
+
+/** Cards are assumed dealt by the table — the next hand starts itself unless the host paused. */
+function scheduleAutoDeal(g) {
+  if (g.config.autoDeal === false || g.paused) return;
+  const atHand = g.hand;
+  setTimeout(() => {
+    if (games.get(g.code) !== g) return; // room ended or swept
+    if (g.state !== "idle" || g.hand !== atHand || g.paused) return;
+    if (
+      alive(g).filter((p) => {
+        return p.stack > 0;
+      }).length < 2
+    )
+      return;
+    try {
+      startHand(g);
+      broadcast(g);
+    } catch {
+      /* not enough players etc. — host can deal manually */
+    }
+  }, g.config.autoDealDelayMs ?? 5000);
 }
 
 /* --------------------------------------------------- snapshots & wire */
@@ -436,20 +561,28 @@ function snapshot(g) {
   const { players, unseated, ...rest } = g;
   return {
     ...rest,
-    players: players.map(({ ws, connected, ...p }) => {return p}), // connection state is derived, never persisted
-    unseated: unseated.map(({ ws, ...u }) => {return u}),
+    players: players.map(({ ws, connected, ...p }) => {
+      return p;
+    }), // connection state is derived, never persisted
+    unseated: unseated.map(({ ws, ...u }) => {
+      return u;
+    }),
   };
 }
 function publicState(g) {
   return {
     ...snapshot(g),
-    players: alive(g).map((p) => {return {
-      ...p,
-      ws: undefined,
-      token: undefined,
-      connected: p.connected,
-    }}),
-    unseated: g.unseated.map((u) => {return { id: u.id, name: u.name }}),
+    players: alive(g).map((p) => {
+      return {
+        ...p,
+        ws: undefined,
+        token: undefined,
+        connected: p.connected,
+      };
+    }),
+    unseated: g.unseated.map((u) => {
+      return { id: u.id, name: u.name };
+    }),
     seq: seqOf(g),
   };
 }
@@ -504,9 +637,13 @@ wss.on("connection", (ws) => {
       pl.connected = false;
       broadcast(g);
     }
-    const u = g.unseated.find((x) => {return x.ws === ws});
+    const u = g.unseated.find((x) => {
+      return x.ws === ws;
+    });
     if (u) {
-      g.unseated = g.unseated.filter((x) => {return x !== u});
+      g.unseated = g.unseated.filter((x) => {
+        return x !== u;
+      });
       broadcast(g);
     }
   });
@@ -604,24 +741,42 @@ function handle(ws, m) {
       break;
     }
     case "seat_player": {
-      // seat someone from the join queue with a buy-in
+      // seat someone from the join queue with a buy-in; mid-hand they sit out
+      // (inHand=false) and are dealt in when the next hand starts
       requireHost(g, token);
-      if (g.state === "hand") throw "Seat players between hands.";
-      const u = g.unseated.find((x) => {return x.id === m.uid});
+      const u = g.unseated.find((x) => {
+        return x.id === m.uid;
+      });
       if (!u) throw "They're gone.";
-      const buy = Math.max(0, Math.floor(m.buyIn ?? g.config.defaultBuyIn));
-      const seat = seatPlayer(g, u.token, u.name, buy);
+      const buy = Math.floor(m.buyIn);
+      if (!Number.isFinite(buy) || buy <= 0) throw "Enter a buy-in amount first.";
+      const seat = seatPlayer(
+        g,
+        u.token,
+        u.name,
+        buy,
+        Number.isInteger(m.seat) ? m.seat : undefined
+      );
       const np = bySeat(g, seat);
       np.ws = u.ws;
       np.connected = true;
       if (np.ws) np.ws.meta = { room: g.code, token: u.token };
-      g.unseated = g.unseated.filter((x) => {return x !== u});
+      g.unseated = g.unseated.filter((x) => {
+        return x !== u;
+      });
+      g.notice =
+        g.state === "idle"
+          ? `${np.name} joined with ${buy} (seat ${seat}).`
+          : `${np.name} is seated (seat ${seat}) — dealt in next hand.`;
+      assertConservation(g);
       break;
     }
     case "assign_seat": {
       // hand an existing seat (stack and all) to someone in the queue
       requireHost(g, token);
-      const u = g.unseated.find((x) => {return x.id === m.uid});
+      const u = g.unseated.find((x) => {
+        return x.id === m.uid;
+      });
       const p = bySeat(g, m.seat);
       if (!u || !p) throw "Pick a queued player and a seat.";
       if (p.connected) throw "That seat's owner is still connected.";
@@ -631,7 +786,9 @@ function handle(ws, m) {
       p.ws = u.ws;
       p.connected = true;
       if (p.ws) p.ws.meta = { room: g.code, token: u.token };
-      g.unseated = g.unseated.filter((x) => {return x !== u});
+      g.unseated = g.unseated.filter((x) => {
+        return x !== u;
+      });
       g.notice = `${p.name} took over seat ${p.seat}.`;
       break;
     }
@@ -647,6 +804,7 @@ function handle(ws, m) {
       }
       g.totalChips -= p.stack;
       p.stack = 0;
+      p.pendingChips = 0;
       p.removed = true;
       p.connected = false;
       p.ws = null;
@@ -655,16 +813,40 @@ function handle(ws, m) {
       break;
     }
     case "add_chips": {
-      // rebuy / top-up between hands
+      // rebuy / top-up. Immediate when the player's chips aren't live in a
+      // hand; otherwise queued (pendingChips) and applied when the hand ends.
       requireHost(g, token);
-      if (g.state === "hand") throw "Adjust stacks between hands.";
       const p = bySeat(g, m.seat);
       const amt = Math.floor(m.amount);
-      if (!p || !Number.isFinite(amt)) throw "Bad amount.";
-      if (p.stack + amt < 0) throw "Stack can't go negative.";
-      p.stack += amt;
-      g.totalChips += amt;
-      g.notice = `${p.name}: ${amt >= 0 ? "+" : ""}${amt} chips.`;
+      if (!p || !Number.isFinite(amt) || amt === 0) throw "Bad amount.";
+      if (g.state !== "idle" && p.inHand) {
+        p.pendingChips = (p.pendingChips || 0) + amt;
+        g.notice = `${p.name}: ${amt > 0 ? "+" : ""}${amt} after this hand.`;
+      } else {
+        if (p.stack + amt < 0) throw "Stack can't go negative.";
+        p.stack += amt;
+        g.totalChips += amt;
+        g.notice = `${p.name}: ${amt >= 0 ? "+" : ""}${amt} chips.`;
+        assertConservation(g);
+      }
+      break;
+    }
+    case "set_pause": {
+      requireHost(g, token);
+      g.paused = !!m.paused;
+      if (g.paused) {
+        g.notice = g.state === "idle" ? "Dealing paused." : "Pausing after this hand.";
+      } else {
+        g.notice = "";
+        if (
+          g.state === "idle" &&
+          alive(g).filter((q) => {
+            return q.stack > 0;
+          }).length >= 2
+        ) {
+          startHand(g); // resume = deal now
+        }
+      }
       break;
     }
     case "transfer_host": {
@@ -740,7 +922,12 @@ function notifyRestorable(room) {
     });
   }
   if (!anyoneMayRestore)
-    setTimeout(() => {return notifyRestorable(room)}, RESTORE_HOST_WAIT_MS - (Date.now() - p.first) + 250);
+    setTimeout(
+      () => {
+        return notifyRestorable(room);
+      },
+      RESTORE_HOST_WAIT_MS - (Date.now() - p.first) + 250
+    );
 }
 
 function doRestore(ws, m) {
@@ -778,15 +965,28 @@ function validSnapshot(s, room) {
   }
   if (!Number.isInteger(s.pot) || s.pot < 0) return false;
   const sum =
-    s.players.filter((p) => {return !p.removed}).reduce((a, q) => {return a + q.stack + q.committedStreet}, 0) +
+    s.players
+      .filter((p) => {
+        return !p.removed;
+      })
+      .reduce((a, q) => {
+        return a + q.stack + q.committedStreet;
+      }, 0) +
     s.pot +
-    (s.pots ? s.pots.reduce((a, q) => {return a + (q.remaining ?? q.amount)}, 0) : 0);
+    (s.pots
+      ? s.pots.reduce((a, q) => {
+          return a + (q.remaining ?? q.amount);
+        }, 0)
+      : 0);
   return sum === s.totalChips; // tampered chip counts fail conservation
 }
 
 function reviveSnapshot(s, room) {
   const g = { ...s, code: room, lastActivity: Date.now(), unseated: [] };
-  g.players = s.players.map((p) => {return { ...p, ws: null, connected: false }}); // presence recomputed from live sockets
+  g.paused = !!s.paused; // pre-auto-deal snapshots lack these fields
+  g.players = s.players.map((p) => {
+    return { ...p, ws: null, connected: false, pendingChips: p.pendingChips || 0 }; // presence recomputed from live sockets
+  });
   g.streetLog = s.streetLog || [];
   g.handLog = s.handLog || {};
   return g;
@@ -800,11 +1000,15 @@ setInterval(
     for (const [code, p] of pending) if (now - p.first > SWEEP_GAME_MS) pending.delete(code);
 
     if (!PUBLIC_URL) return;
-    const active = [...games.values()].some(
-      (g) =>
-        {return (g.state !== "idle" || alive(g).some((p) => {return p.connected})) &&
-        now - g.lastActivity < STALE_GAME_MS}
-    );
+    const active = [...games.values()].some((g) => {
+      return (
+        (g.state !== "idle" ||
+          alive(g).some((p) => {
+            return p.connected;
+          })) &&
+        now - g.lastActivity < STALE_GAME_MS
+      );
+    });
     if (active) fetch(`${PUBLIC_URL.replace(/\/$/, "")}/health`).catch(() => {});
   },
   10 * 60 * 1000

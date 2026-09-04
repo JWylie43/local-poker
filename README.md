@@ -13,7 +13,11 @@ so a server restart is recoverable.
 - **Run it twice/thrice/quad**: pots split per run at payout; odd chips go to earlier runs
 - Showdown payout UI: host taps winners per pot per run (supports split pots)
 - Reconnect tokens (localStorage) — lock your phone, come back, you're in your seat
-- Host controls: deal, force-fold (current actor only), seat/assign players, ±chips, transfer host, remove player, end game
+- **Auto-deal**: the next hand starts itself ~5s after a hand ends (host can pause/resume)
+- Table view: seats around an oval felt in seat order, you at bottom-center; pot in the middle
+- Host controls: force-fold (current actor only), pause dealing, seat players (buy-in + seat
+  pick, mid-hand joiners sit out until the next hand), end game; tap any seat for ±chips
+  (queued if a hand is live), transfer host, or remove — every host action is tap-twice-to-confirm
 - Seat takeover: someone cleared their storage → they rejoin by name, host hands them their old seat
 - **Snapshot/restore**: every state change is backed up to every client; on server restart the
   newest backup (ordered by hand → street → action count, all derived) restores the game.

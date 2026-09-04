@@ -182,102 +182,158 @@
         color: var(--cream-dim);
         font-size: 14px;
       }
-      .pot {
-        text-align: center;
-        margin: 14px 0 4px;
-        padding: 18px 10px 16px;
-        border-radius: 16px;
-        background: radial-gradient(80% 120% at 50% 0%, #1d4c3b 0%, transparent 70%);
+      /* ---- the table ---- */
+      .feltwrap {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 0.95;
+        margin: 6px 0 10px;
       }
-      .pot .n {
-        font-size: 56px;
+      .felt {
+        position: absolute;
+        inset: 13% 9%;
+        border-radius: 48% / 44%;
+        background: radial-gradient(80% 90% at 50% 30%, #1d4c3b 0%, var(--felt-deep) 88%);
+        border: 7px solid var(--rail);
+        box-shadow:
+          inset 0 0 34px rgba(0, 0, 0, 0.45),
+          0 4px 18px rgba(0, 0, 0, 0.35);
+      }
+      .felt-center {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        width: 56%;
+        pointer-events: none;
+      }
+      .felt-center .n {
+        font-size: 34px;
         font-weight: 800;
         line-height: 1;
         font-variation-settings: "wdth" 82;
       }
-      .pot .l {
-        color: var(--cream-dim);
-        font-size: 14px;
-        margin-top: 2px;
-      }
-      .pot .street {
-        color: var(--gold);
-        font-weight: 700;
-        font-size: 15px;
-        letter-spacing: 0.06em;
-        margin-top: 6px;
-      }
-      .seats {
-        list-style: none;
-      }
-      .seat {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        gap: 4px 12px;
-        align-items: center;
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: var(--r);
-        padding: 10px 12px;
-        margin-bottom: 8px;
-      }
-      .seat.turn {
-        border-color: var(--gold);
-        box-shadow: 0 0 0 1px var(--gold);
-      }
-      .seat.folded {
-        opacity: 0.45;
-      }
-      .seat.gone .name::after {
-        content: " · away";
-        color: var(--cream-dim);
-        font-weight: 400;
-        font-size: 13px;
-      }
-      .seat .name {
-        font-weight: 700;
-      }
-      .badges {
-        grid-column: 1;
-        display: flex;
-        gap: 4px;
-      }
-      .badge {
-        font-size: 11px;
-        font-weight: 800;
-        border-radius: 99px;
-        padding: 2px 7px;
-        background: var(--felt-deep);
-        color: var(--cream-dim);
-      }
-      .badge.d {
-        background: var(--cream);
-        color: #222;
-      }
-      .badge.allin {
-        background: var(--chip-red);
-        color: var(--cream);
-      }
-      .seat .stackn {
-        grid-column: 3;
-        grid-row: 1;
-        font-weight: 800;
-        font-size: 20px;
-        text-align: right;
-      }
-      .seat .front {
-        grid-column: 2;
-        grid-row: 2;
-        color: var(--gold);
-        font-size: 14px;
-        min-height: 1em;
-      }
-      .seat .stackl {
-        grid-column: 3;
-        grid-row: 2;
+      .felt-center .l {
         color: var(--cream-dim);
         font-size: 12px;
-        text-align: right;
+        margin-top: 2px;
+      }
+      .felt-center .street {
+        color: var(--gold);
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-top: 3px;
+      }
+      .pseat {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        width: 96px;
+        text-align: center;
+        z-index: 2;
+      }
+      .pseat.tappable {
+        cursor: pointer;
+      }
+      .pseat .avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        margin: 0 auto 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 17px;
+        background: var(--card);
+        border: 2px solid var(--line);
+        transition: box-shadow 0.2s;
+      }
+      .pseat.turn .avatar {
+        border-color: var(--gold);
+        box-shadow: 0 0 12px rgba(217, 164, 65, 0.6);
+      }
+      .pseat.folded {
+        opacity: 0.45;
+      }
+      .pseat.away .avatar {
+        border-style: dashed;
+        opacity: 0.7;
+      }
+      .pseat .plate {
+        display: inline-block;
+        background: var(--felt-deep);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 2px 7px;
+        font-size: 12px;
+        line-height: 1.3;
+        max-width: 96px;
+      }
+      .plate .nm {
+        font-weight: 700;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .plate .st {
+        font-weight: 800;
+        font-size: 13px;
+      }
+      .pseat .tag {
+        font-size: 10px;
+        font-weight: 800;
+        border-radius: 99px;
+        padding: 1px 6px;
+        display: inline-block;
+        margin-top: 2px;
+      }
+      .tag.allin {
+        background: var(--chip-red);
+      }
+      .tag.out {
+        background: var(--felt-deep);
+        color: var(--cream-dim);
+        border: 1px solid var(--line);
+      }
+      .tag.pend {
+        background: var(--chip-green);
+      }
+      .betchip {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        z-index: 1;
+        background: rgba(13, 39, 30, 0.9);
+        border: 1px solid var(--gold);
+        color: var(--gold);
+        font-weight: 700;
+        font-size: 12px;
+        padding: 2px 8px;
+        border-radius: 99px;
+      }
+      .dbtn {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        z-index: 1;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--cream);
+        color: #222;
+        font-size: 11px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .btn.armed,
+      .mini.armed {
+        background: var(--gold);
+        color: #2a1f08;
+        border-color: var(--gold);
       }
       .ticker {
         margin: 14px 0;
@@ -447,9 +503,9 @@
         color: var(--cream-dim);
         font-size: 13px;
       }
-      @media (prefers-reduced-motion: no-preference) {
-        .seat.turn {
-          transition: box-shadow 0.2s;
+      @media (prefers-reduced-motion: reduce) {
+        .pseat .avatar {
+          transition: none;
         }
       }
     </style>
@@ -516,12 +572,15 @@
         <div class="handline" id="t-hand"></div>
       </div>
       <div id="t-notice"></div>
-      <div class="pot">
-        <div class="n" id="t-pot">0</div>
-        <div class="l" id="t-potlabel">pot</div>
-        <div class="street" id="t-street"></div>
+      <div class="feltwrap">
+        <div class="felt"></div>
+        <div class="felt-center">
+          <div class="n" id="t-pot">0</div>
+          <div class="l" id="t-potlabel">pot</div>
+          <div class="street" id="t-street"></div>
+        </div>
+        <div id="t-seatlayer"></div>
       </div>
-      <ul class="seats" id="t-seats"></ul>
       <div class="ticker" id="t-log"></div>
       <div id="t-showdown"></div>
       <div id="t-idle"></div>
@@ -532,6 +591,11 @@
     </button>
     <div class="drawer" id="drawer" onclick="if (event.target === this) toggleDrawer(false);">
       <div class="panel" id="drawer-panel"></div>
+    </div>
+
+    <!-- host: tap a seat to act on that player -->
+    <div class="drawer" id="sheet" onclick="if (event.target === this) closeSheet();">
+      <div class="panel" id="sheet-panel"></div>
     </div>
 
     <div class="actionbar" id="actionbar" style="display: none">
@@ -657,6 +721,7 @@
         room = null;
         restoreInfo = null;
         toggleDrawer(false);
+        closeSheet();
         $("hostbtn").style.display = "none";
         $("actionbar").style.display = "none";
         if (ws && ws.readyState === 1) ws.close(); // detach cleanly; auto-reconnect gives a fresh socket
@@ -827,25 +892,12 @@
         $("t-street").textContent =
           S.state === "hand" ? S.street : S.state === "showdown" ? "showdown" : "";
         $("hostbtn").style.display = YOU && YOU.isHost ? "block" : "none";
+        if (!(YOU && YOU.isHost)) {
+          $("drawer").classList.remove("on");
+          if (sheetSeat != null) closeSheet();
+        }
 
-        // seats
-        const toAct = S.betting ? S.betting.toActSeat : -1;
-        $("t-seats").innerHTML = S.players
-          .map((p) => {
-            const badges = [
-              p.seat === S.buttonSeat && S.hand ? `<span class="badge d">D</span>` : "",
-              p.allIn ? `<span class="badge allin">ALL-IN</span>` : "",
-              YOU && p.seat === YOU.seat ? `<span class="badge">you</span>` : "",
-            ].join("");
-            return `<li class="seat ${p.seat === toAct ? "turn" : ""} ${p.folded ? "folded" : ""} ${p.connected ? "" : "gone"}">
-      <div class="badges">${badges}</div>
-      <div class="name">${esc(p.name)}</div>
-      <div class="stackn">${p.stack}</div>
-      <div class="front">${p.committedStreet ? `${p.committedStreet} in front` : ""}${p.folded ? "folded" : ""}</div>
-      <div class="stackl">stack</div>
-    </li>`;
-          })
-          .join("");
+        renderFelt();
 
         // street log (current street + earlier streets this hand)
         const past = Object.entries(S.handLog || {})
@@ -859,7 +911,75 @@
         renderShowdown();
         renderIdle();
         renderActionBar();
-        if (YOU && YOU.isHost) renderDrawer();
+        if (YOU && YOU.isHost) {
+          renderDrawer();
+          renderSheet();
+        }
+      }
+
+      /* seats laid out around the oval, rotated so you sit bottom-center */
+      function initialsOf(name) {
+        return String(name || "?")
+          .trim()
+          .slice(0, 2)
+          .toUpperCase();
+      }
+      function renderFelt() {
+        const layer = $("t-seatlayer");
+        const ps = [...S.players].sort((a, b) => {
+          return a.seat - b.seat;
+        });
+        const n = ps.length;
+        if (!n) {
+          layer.innerHTML = "";
+          return;
+        }
+        let hero = ps.findIndex((p) => {
+          return YOU && p.seat === YOU.seat;
+        });
+        if (hero < 0) hero = 0;
+        const toAct = S.betting ? S.betting.toActSeat : -1;
+        const midHand = S.state !== "idle";
+        let html = "";
+        ps.forEach((p, i) => {
+          const a = Math.PI / 2 + (2 * Math.PI * ((i - hero + n) % n)) / n;
+          const x = 50 + 39 * Math.cos(a);
+          const y = 50 + 38 * Math.sin(a);
+          const sittingOut = midHand && !p.inHand && !p.folded;
+          const tags = [];
+          if (p.allIn) tags.push('<span class="tag allin">ALL-IN</span>');
+          if (p.folded) tags.push('<span class="tag out">folded</span>');
+          if (sittingOut) tags.push('<span class="tag out">next hand</span>');
+          if (p.pendingChips) {
+            tags.push(
+              `<span class="tag pend">${p.pendingChips > 0 ? "+" : ""}${p.pendingChips} next</span>`
+            );
+          }
+          const cls = [
+            "pseat",
+            p.seat === toAct ? "turn" : "",
+            p.folded ? "folded" : "",
+            p.connected ? "" : "away",
+            YOU && YOU.isHost ? "tappable" : "",
+          ].join(" ");
+          const tap = YOU && YOU.isHost ? `onclick="openSheet(${p.seat})"` : "";
+          html += `<div class="${cls}" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%" ${tap}>
+        <div class="avatar">${esc(initialsOf(p.name))}</div>
+        <div class="plate"><span class="nm">${esc(p.name)}${YOU && p.seat === YOU.seat ? " (you)" : ""}${p.connected ? "" : " · away"}</span><span class="st">${p.stack}</span></div>
+        <div>${tags.join(" ")}</div>
+      </div>`;
+          if (p.committedStreet) {
+            const bx = 50 + 21 * Math.cos(a);
+            const by = 50 + 22 * Math.sin(a);
+            html += `<div class="betchip" style="left:${bx.toFixed(1)}%;top:${by.toFixed(1)}%">${p.committedStreet}</div>`;
+          }
+          if (S.hand && p.seat === S.buttonSeat) {
+            const dx = 50 + 29 * Math.cos(a - 0.5);
+            const dy = 50 + 28 * Math.sin(a - 0.5);
+            html += `<div class="dbtn" style="left:${dx.toFixed(1)}%;top:${dy.toFixed(1)}%">D</div>`;
+          }
+        });
+        layer.innerHTML = html;
       }
       function logLines(street, log) {
         return (
@@ -873,24 +993,31 @@
         );
       }
 
-      /* idle (between hands) */
+      /* status + straddle toggle (straddle applies to the next hand, so it shows any time) */
       function renderIdle() {
         const el = $("t-idle");
-        if (S.state !== "idle") {
-          el.innerHTML = "";
-          return;
-        }
         let html = "";
         if (S.config.straddleAllowed && me()) {
-          const on = false; // server tracks; we just show the toggle action
           html += `<button class="btn ghost" onclick='send({type:"straddle_next"})'>Toggle my straddle for next hand</button>`;
         }
-        if (!(YOU && YOU.isHost)) {
-          html +=
-            YOU && YOU.seat < 0
-              ? `<p class="waiting" style="margin-top:10px">You're in the room — waiting for the host to give you a seat.</p>`
-              : `<p class="waiting" style="margin-top:10px">Waiting for the host to start the next hand…</p>`;
+        let status = "";
+        if (YOU && YOU.seat < 0) {
+          status =
+            S.state === "idle"
+              ? "You're in the room — waiting for the host to give you a seat."
+              : "Hand in progress — the host can seat you for the next one.";
+        } else if (S.state === "idle") {
+          const ready = S.players.filter((p) => {
+            return p.stack > 0;
+          }).length;
+          if (S.paused) status = "Game paused by the host.";
+          else if (!S.hand)
+            status = YOU && YOU.isHost ? "" : "Waiting for the host to deal the first hand.";
+          else if (ready >= 2 && S.config.autoDeal !== false)
+            status = "Shuffle up — next hand starting…";
+          else if (!(YOU && YOU.isHost)) status = "Waiting for the host to start the next hand…";
         }
+        if (status) html += `<p class="waiting" style="margin-top:10px">${status}</p>`;
         el.innerHTML = html;
       }
 
@@ -1001,7 +1128,15 @@
           for (let r = 0; r < ritSel; r++) if (!(pick[i]?.[r] || []).length) return false;
           return true;
         });
-        html += `<button class="btn gold" ${ready ? "" : "disabled"} onclick="submitAwards()">Pay the pots</button>`;
+        html += cbtn(
+          "pay",
+          "Pay the pots",
+          "btn gold",
+          () => {
+            submitAwards();
+          },
+          ready ? "" : "disabled"
+        );
         el.innerHTML = html;
       }
       function potName(i) {
@@ -1028,69 +1163,251 @@
         send({ type: "award", awards });
       }
 
+      /* ------------- two-tap confirm: first tap arms, second tap fires ------------- */
+      const acts = {};
+      let armed = null,
+        armedTimer = null;
+      function cbtn(key, label, cls, fn, extra = "") {
+        acts[key] = fn;
+        const isArmed = armed === key;
+        return `<button class="${cls}${isArmed ? " armed" : ""}" ${extra} onclick="confirmAct('${key}')">${isArmed ? "Tap again to confirm" : label}</button>`;
+      }
+      function confirmAct(key) {
+        clearTimeout(armedTimer);
+        if (armed !== key) {
+          armed = key;
+          armedTimer = setTimeout(() => {
+            armed = null;
+            if (S) renderTable();
+          }, 3500);
+          if (S) renderTable();
+          return;
+        }
+        armed = null;
+        const fn = acts[key];
+        if (fn) fn();
+        if (S) renderTable();
+      }
+      /* swap panel contents without stomping what the host is typing */
+      function setPanel(el, html) {
+        const foc = document.activeElement;
+        if (foc && el.contains(foc) && (foc.tagName === "INPUT" || foc.tagName === "SELECT"))
+          return;
+        const vals = {};
+        for (const i of el.querySelectorAll("input,select")) if (i.id) vals[i.id] = i.value;
+        el.innerHTML = html;
+        for (const i of el.querySelectorAll("input,select")) {
+          if (i.id && vals[i.id] !== undefined && vals[i.id] !== "") i.value = vals[i.id];
+        }
+      }
+
       /* ---------------- host drawer ---------------- */
       function toggleDrawer(on) {
         $("drawer").classList.toggle("on", on);
         if (on) renderDrawer();
       }
       function renderDrawer() {
-        if (!S) return;
+        if (!S || !YOU || !YOU.isHost) return;
         const idle = S.state === "idle";
         let html = `<h3>Host controls</h3>`;
         html += `<p class="dim" style="margin-bottom:10px">Share to join: <b>${location.origin}/?g=${S.code}</b></p>`;
-        if (idle)
-          html += `<button class="btn gold" onclick='send({type:"start_hand"});toggleDrawer(false)'>Deal next hand</button>`;
-        else if (S.state === "hand") {
-          const who = S.players.find((p) => p.seat === S.betting?.toActSeat);
-          html += `<button class="btn red" onclick='send({type:"force_fold",seat:${S.betting?.toActSeat}})'>Force-fold ${esc(who ? who.name : "")} (their turn)</button>`;
+        if (idle) {
+          html += cbtn(
+            "deal",
+            S.hand ? "Deal next hand now" : "Deal the first hand",
+            "btn gold",
+            () => {
+              send({ type: "start_hand" });
+              toggleDrawer(false);
+            }
+          );
+        } else if (S.state === "hand") {
+          const who = S.players.find((p) => {
+            return p.seat === (S.betting ? S.betting.toActSeat : -1);
+          });
+          if (who) {
+            html += cbtn(
+              "ff-" + who.seat,
+              `Force-fold ${esc(who.name)} (their turn)`,
+              "btn red",
+              () => {
+                send({ type: "force_fold", seat: who.seat });
+              }
+            );
+          }
         }
+        html += S.paused
+          ? cbtn(
+              "resume",
+              "Resume dealing",
+              "btn",
+              () => {
+                send({ type: "set_pause", paused: false });
+              },
+              'style="margin-top:8px"'
+            )
+          : `<button class="btn ghost" style="margin-top:8px" onclick='send({type:"set_pause",paused:true})'>Pause dealing${idle ? "" : " after this hand"}</button>`;
+
         if (S.unseated && S.unseated.length) {
+          const takenSeats = new Set(
+            S.players.map((p) => {
+              return p.seat;
+            })
+          );
+          const freeSeats = [];
+          for (let s = 0; s < 10; s++) if (!takenSeats.has(s)) freeSeats.push(s);
           html += `<h3 style="margin-top:18px">Waiting to sit</h3>`;
-          const openSeats = S.players.filter((p) => !p.connected);
           for (const u of S.unseated) {
-            html += `<div class="hrow"><div class="grow"><b>${esc(u.name)}</b></div>
-        <button class="mini gold" onclick='seatQueued("${u.id}")' ${idle ? "" : "disabled"}>Seat + buy-in</button>
-        ${openSeats.length ? `<button class="mini" onclick='assignQueued("${u.id}")'>Give a seat</button>` : ""}
-      </div>`;
+            const uid = u.id;
+            html += `<div class="potcard">
+          <div style="margin-bottom:6px"><b>${esc(u.name)}</b></div>
+          <div class="row">
+            <input id="buy-${uid}" type="number" inputmode="numeric" min="1" placeholder="Buy-in (e.g. ${S.config.defaultBuyIn})" oninput="syncDrawerButtons()" />
+            <select id="seatsel-${uid}">${freeSeats
+              .map((s) => {
+                return `<option value="${s}">Seat ${s}</option>`;
+              })
+              .join("")}</select>
+          </div>
+          ${cbtn(
+            "add-" + uid,
+            "Add to the table",
+            "btn gold",
+            () => {
+              const buy = Math.floor(+$("buy-" + uid).value);
+              if (!(buy > 0)) return;
+              send({ type: "seat_player", uid, buyIn: buy, seat: +$("seatsel-" + uid).value });
+            },
+            `id="addbtn-${uid}" style="margin-top:8px" disabled`
+          )}
+        </div>`;
           }
           if (!idle)
-            html += `<p class="dim">New buy-ins seat between hands; taking over a disconnected seat works any time.</p>`;
+            html += `<p class="dim">They take a seat now and are dealt in as soon as this hand ends.</p>`;
+
+          const gone = S.players.filter((p) => {
+            return !p.connected;
+          });
+          if (gone.length) {
+            html += `<h3 style="margin-top:18px">Seat takeover</h3>
+          <p class="dim">Hands a <b>disconnected</b> player's seat — stack and any live action — to someone waiting. Use it when a player lost their phone or storage.</p>`;
+            for (const u of S.unseated) {
+              const uid = u.id;
+              html += `<div class="potcard"><div style="margin-bottom:6px"><b>${esc(u.name)}</b> takes over:</div>
+            <select id="take-${uid}">${gone
+              .map((p) => {
+                return `<option value="${p.seat}">${esc(p.name)} — seat ${p.seat}, stack ${p.stack}</option>`;
+              })
+              .join("")}</select>
+            ${cbtn(
+              "takeover-" + uid,
+              "Take over that seat",
+              "btn",
+              () => {
+                send({ type: "assign_seat", uid, seat: +$("take-" + uid).value });
+              },
+              'style="margin-top:8px"'
+            )}
+          </div>`;
+            }
+          }
         }
-        html += `<h3 style="margin-top:18px">Players</h3>`;
-        for (const p of S.players) {
-          html += `<div class="hrow"><div class="grow"><b>${esc(p.name)}</b> <span class="dim">· ${p.stack}${p.connected ? "" : " · away"}</span></div>
-      <button class="mini" onclick='addChips(${p.seat})' ${idle ? "" : "disabled"}>±chips</button>
-      ${
-        p.seat !== YOU.seat
-          ? `<button class="mini" onclick='send({type:"transfer_host",seat:${p.seat}})'>Make host</button>
-      <button class="mini red" onclick='if(confirm("Remove ${esc(p.name)}? Their stack cashes out."))send({type:"remove_player",seat:${p.seat}})'>Remove</button>`
+        html +=
+          `<hr class="split">` +
+          cbtn(
+            "end",
+            "End game for everyone",
+            "btn ghost",
+            () => {
+              send({ type: "end_game" });
+            },
+            'style="color:var(--danger)"'
+          );
+        setPanel($("drawer-panel"), html);
+        syncDrawerButtons();
+      }
+      function syncDrawerButtons() {
+        if (!S || !S.unseated) return;
+        for (const u of S.unseated) {
+          const inp = $("buy-" + u.id),
+            btn = $("addbtn-" + u.id);
+          if (inp && btn) btn.disabled = !(Math.floor(+inp.value) > 0);
+        }
+      }
+
+      /* ---------------- per-player sheet (host taps a seat) ---------------- */
+      let sheetSeat = null;
+      function openSheet(seat) {
+        if (!(YOU && YOU.isHost)) return;
+        sheetSeat = seat;
+        renderSheet();
+        $("sheet").classList.add("on");
+      }
+      function closeSheet() {
+        sheetSeat = null;
+        $("sheet").classList.remove("on");
+      }
+      function renderSheet() {
+        if (sheetSeat == null || !S) return;
+        const p = S.players.find((q) => {
+          return q.seat === sheetSeat;
+        });
+        if (!p) {
+          closeSheet();
+          return;
+        }
+        const self = YOU && p.seat === YOU.seat;
+        const live = S.state !== "idle" && p.inHand;
+        let html = `<h3>${esc(p.name)} — seat ${p.seat}</h3>
+      <p class="dim" style="margin-bottom:10px">Stack ${p.stack}${
+        p.pendingChips
+          ? ` · ${p.pendingChips > 0 ? "+" : ""}${p.pendingChips} queued for after this hand`
           : ""
-      }
-    </div>`;
+      }${p.connected ? "" : " · away"}</p>
+      <div class="row">
+        <input id="sheet-amt" type="number" inputmode="numeric" placeholder="e.g. 100 or -50" />
+        ${cbtn("chips-" + p.seat, live ? "Add after this hand" : "Add chips", "btn", () => {
+          const v = Math.floor(+$("sheet-amt").value);
+          if (!v) return;
+          send({ type: "add_chips", seat: p.seat, amount: v });
+          if ($("sheet-amt")) $("sheet-amt").value = "";
+        })}
+      </div>`;
+        if (S.state === "hand" && S.betting && S.betting.toActSeat === p.seat) {
+          html += cbtn(
+            "ff-" + p.seat,
+            `Force-fold ${esc(p.name)}`,
+            "btn red",
+            () => {
+              send({ type: "force_fold", seat: p.seat });
+            },
+            'style="margin-top:8px"'
+          );
         }
-        html += `<hr class="split"><button class="btn ghost" style="color:var(--danger)" onclick='if(confirm("End the game for everyone?"))send({type:"end_game"})'>End game</button>`;
-        $("drawer-panel").innerHTML = html;
-      }
-      function seatQueued(uid) {
-        const b = prompt("Buy-in amount?", S.config.defaultBuyIn);
-        if (b == null) return;
-        send({ type: "seat_player", uid, buyIn: +b });
-      }
-      function assignQueued(uid) {
-        const open = S.players.filter((p) => !p.connected);
-        const pickSeat =
-          open.length === 1
-            ? open[0].seat
-            : +prompt(
-                "Which seat number? Disconnected: " +
-                  open.map((p) => `${p.seat} (${p.name}, ${p.stack})`).join(", ")
-              );
-        if (Number.isFinite(pickSeat)) send({ type: "assign_seat", uid, seat: pickSeat });
-      }
-      function addChips(seat) {
-        const a = prompt("Add (or negative to deduct) how many chips?", "100");
-        if (a == null) return;
-        send({ type: "add_chips", seat, amount: +a });
+        if (!self) {
+          html += cbtn(
+            "host-" + p.seat,
+            `Make ${esc(p.name)} the host`,
+            "btn",
+            () => {
+              send({ type: "transfer_host", seat: p.seat });
+              closeSheet();
+            },
+            'style="margin-top:8px"'
+          );
+          html += cbtn(
+            "rm-" + p.seat,
+            `Remove ${esc(p.name)} (stack cashes out)`,
+            "btn red",
+            () => {
+              send({ type: "remove_player", seat: p.seat });
+              closeSheet();
+            },
+            'style="margin-top:8px"'
+          );
+        }
+        html += `<button class="btn ghost" style="margin-top:8px" onclick="closeSheet()">Close</button>`;
+        setPanel($("sheet-panel"), html);
       }
       function finalStandings(state) {
         try {

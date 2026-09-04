@@ -38,6 +38,24 @@ no deck, no shuffling, no hand evaluation — humans compare hands and the host 
   automatically inside that).
 - Host is a transferable role in game state (token), never tied to a device or socket.
 
+## Game flow (host UX decisions, chosen deliberately)
+
+- **Auto-deal**: the next hand starts itself ~5s after a hand ends (`config.autoDeal`,
+  `autoDealDelayMs`; test games set `autoDeal:false` or a short delay). Host has a
+  pause-after-this-hand toggle; unpausing while idle deals immediately. `start_hand` remains
+  for the first hand and as a fallback after restore (timers don't survive restarts).
+- **No one enters mid-hand**: `seat_player` works any time; a player seated during a hand is
+  in `players` with `inHand:false` (sitting out) and is dealt in when the next hand starts,
+  before blinds. Buy-in is required (>0) and the host picks the seat (0-9, `MAX_SEATS`).
+- **Pending top-ups**: `add_chips` on a player whose chips are live in a hand accumulates in
+  `p.pendingChips`, applied (clamped at 0) in `endHand`. Immediate otherwise. `pendingChips`
+  is excluded from conservation until applied — so is consistent in snapshots.
+- Seat takeover (`assign_seat`) requires the target seat to be disconnected; the new player
+  inherits stack and any live action. Client offers it only when someone is disconnected.
+- Client: table rendered as an oval felt, seats placed by seat order rotated so the viewer is
+  bottom-center; host taps a seat for per-player actions. All host actions are two-tap
+  confirm buttons (`cbtn`/`confirmAct`) — no native prompt/confirm dialogs.
+
 ## Operational behavior
 
 - Client heartbeat every 2 min (`{type:"ping"}`) — required: Render's 15-min idle timer only
@@ -52,8 +70,10 @@ no deck, no shuffling, no hand evaluation — humans compare hands and the host 
 - `test.js` is an e2e script against a running server (`node server.js` then `node test.js`).
   It covers: 3-handed blinds/order, fold-out win, short all-in no-reopen, side-pot layering &
   eligibility, RIT split payout, conservation at every stage, restore flow, presence
-  recomputation, tampered-snapshot rejection. Keep all of these green; prefer adding cases for:
-  heads-up blind order, min-raise validation, multiple short all-ins, split pots, straddle pots.
+  recomputation, tampered-snapshot rejection, heads-up blind order, seat selection, buy-in
+  required, mid-hand seating (sit-out then dealt in), pending top-ups, auto-deal, and
+  pause/resume. Keep all of these green; prefer adding cases for: min-raise validation,
+  multiple short all-ins, split pots, straddle pots.
 
 ## Known gaps (intentional v1 scope)
 
