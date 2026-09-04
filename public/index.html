@@ -492,7 +492,9 @@
             <label for="c-buy">Buy-in</label><input id="c-buy" type="number" value="200" min="1" />
           </div>
         </div>
-        <label class="toggle">Allow straddles <input id="c-straddle" type="checkbox" /></label>
+        <label class="toggle"
+          >Allow straddles <input id="c-straddle" type="checkbox" checked
+        /></label>
         <label class="toggle"
           >Allow run-it-twice <input id="c-rit" type="checkbox" checked
         /></label>
@@ -608,7 +610,7 @@
 
       /* ---------------- flows ---------------- */
       function createGame() {
-        const name = ($("j-name").value || store.name || "Host").trim();
+        const name = ($("j-name").value || "").trim();
         if (!name) return homeErr("Enter a name first.");
         store.name = name;
         wanted = null;
@@ -626,7 +628,7 @@
       }
       function joinFromHome() {
         const code = ($("j-code").value || "").toUpperCase().trim();
-        const name = ($("j-name").value || store.name || "").trim();
+        const name = ($("j-name").value || "").trim();
         if (code.length < 4) return homeErr("Enter the room code.");
         if (!name) return homeErr("Enter a name.");
         store.name = name;
@@ -641,8 +643,34 @@
           name: name || store.name || undefined,
         };
         send(wanted);
-        history.replaceState(null, "", "/?g=" + code);
+        enterRoomUrl(code);
       }
+      /* push /?g=CODE onto history (once) so the back button returns home */
+      function enterRoomUrl(code) {
+        const cur = new URLSearchParams(location.search).get("g");
+        if (cur !== code) history.pushState({ g: code }, "", "/?g=" + code);
+      }
+      function goHome() {
+        wanted = null;
+        S = null;
+        YOU = null;
+        room = null;
+        restoreInfo = null;
+        toggleDrawer(false);
+        $("hostbtn").style.display = "none";
+        $("actionbar").style.display = "none";
+        if (ws && ws.readyState === 1) ws.close(); // detach cleanly; auto-reconnect gives a fresh socket
+        showScreen("s-home");
+      }
+      window.addEventListener("popstate", () => {
+        const g = new URLSearchParams(location.search).get("g");
+        if (!g) {
+          goHome();
+          return;
+        }
+        $("j-code").value = g.toUpperCase();
+        joinRoom(g.toUpperCase());
+      });
       function homeErr(t) {
         $("home-err").innerHTML = `<div class="notice err">${esc(t)}</div>`;
       }
@@ -656,7 +684,7 @@
             room = m.room;
             store.setTok(room, m.token);
             wanted = { type: "hello", room, token: m.token };
-            history.replaceState(null, "", "/?g=" + room);
+            enterRoomUrl(room);
             return;
           case "joined_unseated":
             store.setTok(m.room, m.token);
@@ -697,6 +725,7 @@
         }
       }
       function onState(m) {
+        if (!wanted) return; // user backed out to home — ignore late broadcasts
         S = m.state;
         YOU = m.you;
         room = S.code;
@@ -780,7 +809,17 @@
       function renderTable() {
         $("t-code").textContent = S.code;
         $("t-hand").textContent = S.hand ? `hand ${S.hand}` : "no hands yet";
-        $("t-notice").innerHTML = S.notice ? `<div class="notice">${esc(S.notice)}</div>` : "";
+        let noticeHtml = S.notice ? `<div class="notice">${esc(S.notice)}</div>` : "";
+        if (YOU && YOU.isHost && S.unseated && S.unseated.length) {
+          const who = S.unseated
+            .map((u) => {
+              return `<b>${esc(u.name)}</b>`;
+            })
+            .join(", ");
+          noticeHtml += `<div class="notice">${who} ${S.unseated.length === 1 ? "wants" : "want"} to sit —
+            <a href="#" style="color:var(--gold)" onclick="toggleDrawer(true);return false;">seat them in Host controls</a>.</div>`;
+        }
+        $("t-notice").innerHTML = noticeHtml;
         const inPots = S.pots ? S.pots.reduce((a, p) => a + p.remaining, 0) : 0;
         const front = S.players.reduce((a, p) => a + p.committedStreet, 0);
         $("t-pot").textContent = S.pot + inPots + front || 0;
@@ -846,8 +885,12 @@
           const on = false; // server tracks; we just show the toggle action
           html += `<button class="btn ghost" onclick='send({type:"straddle_next"})'>Toggle my straddle for next hand</button>`;
         }
-        if (!(YOU && YOU.isHost))
-          html += `<p class="waiting" style="margin-top:10px">Waiting for the host to start the next hand…</p>`;
+        if (!(YOU && YOU.isHost)) {
+          html +=
+            YOU && YOU.seat < 0
+              ? `<p class="waiting" style="margin-top:10px">You're in the room — waiting for the host to give you a seat.</p>`
+              : `<p class="waiting" style="margin-top:10px">Waiting for the host to start the next hand…</p>`;
+        }
         el.innerHTML = html;
       }
 
@@ -1061,11 +1104,13 @@
 
       /* ---------------- boot ---------------- */
       (function () {
-        $("j-name").value = store.name;
+        // name is never prefilled — joining under a name is a deliberate act
         const g = new URLSearchParams(location.search).get("g");
         if (g) {
           $("j-code").value = g.toUpperCase();
-          if (store.tok(g.toUpperCase()) || store.name) joinRoom(g.toUpperCase());
+          // only auto-join if this device already holds a seat token (reconnect);
+          // first-time visitors type a name and tap Join
+          if (store.tok(g.toUpperCase())) joinRoom(g.toUpperCase());
         }
       })();
     </script>
