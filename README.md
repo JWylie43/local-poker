@@ -1,4 +1,4 @@
-# Table Stakes
+# Local Poker
 
 Chip + pot tracker for live poker. The cards stay physical — this app is the money.
 One Node process, all state in memory, and every phone holds a **snapshot backup** of the game,

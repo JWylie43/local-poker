@@ -1,4 +1,4 @@
-# Table Stakes — project memory
+# Local Poker — project memory
 
 Chip + pot tracker for live poker with physical cards. The app is the money, never the cards:
 no deck, no shuffling, no hand evaluation — humans compare hands and the host awards pots.

@@ -1,5 +1,5 @@
 {
-  "name": "table-stakes",
+  "name": "local-poker",
   "version": "1.0.0",
   "description": "Chip + pot tracker for live poker. Cards stay physical; money logic runs here.",
   "main": "server.js",

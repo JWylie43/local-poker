@@ -1,4 +1,4 @@
-/* Table Stakes — live-poker chip & pot tracker.
+/* Local Poker — live-poker chip & pot tracker.
  * One Node process. All state in memory (Map). Clients hold snapshot backups.
  * Runs identically on a phone (LAN) and on Render (set PUBLIC_URL for keep-alive).
  */
@@ -812,6 +812,6 @@ setInterval(
 
 server.listen(PORT, () => {
   console.log(
-    `Table Stakes on :${PORT}${PUBLIC_URL ? ` (keep-alive → ${PUBLIC_URL})` : " (no PUBLIC_URL: keep-alive off)"}`
+    `Local Poker on :${PORT}${PUBLIC_URL ? ` (keep-alive → ${PUBLIC_URL})` : " (no PUBLIC_URL: keep-alive off)"}`
   );
 });
