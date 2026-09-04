@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Table Stakes</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --felt:#14382b; --felt-deep:#0d271e; --rail:#2a1a12;
+  --cream:#efe7d3; --cream-dim:#b9b09a;
+  --gold:#d9a441; --chip-red:#c94f3d; --chip-blue:#3d7dc9; --chip-green:#4f9e6b;
+  --card:#1b4536; --line:#2c5a48; --danger:#c94f3d;
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:"Archivo",system-ui,sans-serif; background:
+    radial-gradient(120% 90% at 50% 0%, var(--felt) 0%, var(--felt-deep) 78%);
+  color:var(--cream); font-size:16px; line-height:1.45;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+button{font:inherit;border:0;border-radius:var(--r);cursor:pointer;color:var(--cream)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button:disabled{opacity:.4;cursor:default}
+input,select{font:inherit;color:var(--cream);background:var(--felt-deep);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;width:100%}
+.screen{max-width:520px;margin:0 auto;padding:20px 16px 120px;display:none}
+.screen.on{display:block}
+.wordmark{font-weight:800;font-variation-settings:"wdth" 78;letter-spacing:-.02em;font-size:34px}
+.wordmark em{font-style:normal;color:var(--gold)}
+.sub{color:var(--cream-dim);margin:4px 0 26px}
+.stack-v > * + *{margin-top:12px}
+.field label{display:block;font-size:14px;color:var(--cream-dim);margin-bottom:5px}
+.row{display:flex;gap:10px}.row > *{flex:1}
+.btn{padding:14px 16px;font-weight:700;background:var(--card);border:1px solid var(--line);width:100%}
+.btn.gold{background:var(--gold);color:#2a1f08;border-color:var(--gold)}
+.btn.red{background:var(--chip-red);border-color:var(--chip-red)}
+.btn.ghost{background:transparent}
+.toggle{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.toggle input{width:auto;accent-color:var(--gold);transform:scale(1.35)}
+hr.split{border:0;border-top:1px solid var(--line);margin:24px 0}
+.notice{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:var(--r);padding:10px 12px;font-size:15px;margin-bottom:12px}
+.err{border-left-color:var(--danger)}
+
+/* table */
+.topbar{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.roomcode{font-weight:800;letter-spacing:.14em;font-size:18px;color:var(--gold)}
+.roomcode small{color:var(--cream-dim);letter-spacing:0;font-weight:400;margin-right:6px}
+.handline{color:var(--cream-dim);font-size:14px}
+.pot{
+  text-align:center;margin:14px 0 4px;padding:18px 10px 16px;border-radius:16px;
+  background:radial-gradient(80% 120% at 50% 0%, #1d4c3b 0%, transparent 70%);
+}
+.pot .n{font-size:56px;font-weight:800;line-height:1;font-variation-settings:"wdth" 82}
+.pot .l{color:var(--cream-dim);font-size:14px;margin-top:2px}
+.pot .street{color:var(--gold);font-weight:700;font-size:15px;letter-spacing:.06em;margin-top:6px}
+.seats{list-style:none}
+.seat{
+  display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:10px 12px;margin-bottom:8px;
+}
+.seat.turn{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.seat.folded{opacity:.45}
+.seat.gone .name::after{content:" · away";color:var(--cream-dim);font-weight:400;font-size:13px}
+.seat .name{font-weight:700}
+.badges{grid-column:1;display:flex;gap:4px}
+.badge{font-size:11px;font-weight:800;border-radius:99px;padding:2px 7px;background:var(--felt-deep);color:var(--cream-dim)}
+.badge.d{background:var(--cream);color:#222}
+.badge.allin{background:var(--chip-red);color:var(--cream)}
+.seat .stackn{grid-column:3;grid-row:1;font-weight:800;font-size:20px;text-align:right}
+.seat .front{grid-column:2;grid-row:2;color:var(--gold);font-size:14px;min-height:1em}
+.seat .stackl{grid-column:3;grid-row:2;color:var(--cream-dim);font-size:12px;text-align:right}
+.ticker{margin:14px 0;font-size:14px;color:var(--cream-dim);max-height:126px;overflow-y:auto;
+  border-left:2px solid var(--line);padding-left:10px}
+.ticker b{color:var(--cream)}
+.ticker .amt{color:var(--gold)}
+
+/* action bar */
+.actionbar{
+  position:fixed;left:0;right:0;bottom:0;background:var(--rail);
+  border-top:2px solid var(--gold);padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+}
+.actionbar .inner{max-width:520px;margin:0 auto}
+.acts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.acts .btn{padding:14px 6px;font-size:16px}
+.raise-row{display:flex;gap:8px;margin-top:8px}
+.raise-row input[type=number]{flex:1;text-align:center;font-weight:700;font-size:18px}
+.raise-row .btn{flex:1.4}
+.waiting{color:var(--cream-dim);text-align:center;font-size:15px}
+
+/* showdown */
+.potcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:10px}
+.potcard h4{font-size:15px;margin-bottom:6px}.potcard h4 span{color:var(--gold)}
+.rungrid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.wpick{padding:8px 12px;border-radius:99px;background:var(--felt-deep);border:1px solid var(--line);font-size:14px}
+.wpick.sel{background:var(--gold);color:#2a1f08;border-color:var(--gold);font-weight:700}
+.runlabel{font-size:13px;color:var(--cream-dim);margin-top:8px}
+
+/* host drawer */
+.hostbtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:12px;z-index:5;
+  background:var(--rail);border:1px solid var(--line);padding:8px 14px;font-weight:700}
+.drawer{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:10}
+.drawer.on{display:block}
+.drawer .panel{position:absolute;right:0;top:0;bottom:0;width:min(92vw,380px);background:var(--felt-deep);
+  border-left:1px solid var(--line);padding:18px 16px calc(18px + env(safe-area-inset-bottom));overflow-y:auto}
+.panel h3{margin-bottom:12px}
+.hrow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:15px}
+.hrow .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mini{padding:7px 10px;font-size:13px;border-radius:8px;background:var(--card);border:1px solid var(--line)}
+.mini.red{background:var(--chip-red);border-color:var(--chip-red)}
+.mini.gold{background:var(--gold);color:#2a1f08;border-color:var(--gold)}
+.dim{color:var(--cream-dim);font-size:13px}
+@media (prefers-reduced-motion: no-preference){
+  .seat.turn{transition:box-shadow .2s}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ HOME ============ -->
+<section id="s-home" class="screen on">
+  <div class="wordmark">Table <em>Stakes</em></div>
+  <p class="sub">Chips and pots for a live game — the cards stay on the table.</p>
+  <div id="home-err"></div>
+  <div class="stack-v">
+    <div class="field"><label for="j-code">Join a table</label>
+      <div class="row">
+        <input id="j-code" placeholder="Room code" autocapitalize="characters" maxlength="5" style="letter-spacing:.2em;font-weight:700">
+        <button class="btn gold" style="flex:.7" onclick="joinFromHome()">Join</button>
+      </div>
+    </div>
+    <div class="field"><label for="j-name">Your name</label>
+      <input id="j-name" placeholder="Name" maxlength="20">
+    </div>
+  </div>
+  <hr class="split">
+  <div class="stack-v">
+    <div class="row">
+      <div class="field"><label for="c-sb">Small blind</label><input id="c-sb" type="number" value="1" min="1"></div>
+      <div class="field"><label for="c-bb">Big blind</label><input id="c-bb" type="number" value="2" min="1"></div>
+      <div class="field"><label for="c-buy">Buy-in</label><input id="c-buy" type="number" value="200" min="1"></div>
+    </div>
+    <label class="toggle">Allow straddles <input id="c-straddle" type="checkbox"></label>
+    <label class="toggle">Allow run-it-twice <input id="c-rit" type="checkbox" checked></label>
+    <button class="btn" onclick="createGame()">Start a new table</button>
+  </div>
+</section>
+
+<!-- ============ RESTORE ============ -->
+<section id="s-restore" class="screen">
+  <div class="wordmark">Table <em>Stakes</em></div>
+  <p class="sub">The server restarted, but this game was backed up on your phones.</p>
+  <div id="restore-body" class="stack-v"></div>
+</section>
+
+<!-- ============ TABLE ============ -->
+<section id="s-table" class="screen">
+  <div class="topbar">
+    <div class="roomcode"><small>room</small><span id="t-code"></span></div>
+    <div class="handline" id="t-hand"></div>
+  </div>
+  <div id="t-notice"></div>
+  <div class="pot">
+    <div class="n" id="t-pot">0</div>
+    <div class="l" id="t-potlabel">pot</div>
+    <div class="street" id="t-street"></div>
+  </div>
+  <ul class="seats" id="t-seats"></ul>
+  <div class="ticker" id="t-log"></div>
+  <div id="t-showdown"></div>
+  <div id="t-idle"></div>
+</section>
+
+<button class="hostbtn" id="hostbtn" style="display:none" onclick="toggleDrawer(true)">Host</button>
+<div class="drawer" id="drawer" onclick="if(event.target===this)toggleDrawer(false)">
+  <div class="panel" id="drawer-panel"></div>
+</div>
+
+<div class="actionbar" id="actionbar" style="display:none"><div class="inner" id="actionbar-inner"></div></div>
+
+<script>
+"use strict";
+/* ---------------- connection ---------------- */
+let ws=null, retryMs=800, room=null, S=null, YOU=null, wanted=null, restoreInfo=null;
+const $=id=>document.getElementById(id);
+const store={
+  get name(){return localStorage.getItem("ts_name")||""}, set name(v){localStorage.setItem("ts_name",v)},
+  tok(r){return localStorage.getItem("ts_tok_"+r)}, setTok(r,t){localStorage.setItem("ts_tok_"+r,t)},
+  snap(r){try{return JSON.parse(localStorage.getItem("ts_snap_"+r))}catch{return null}},
+  setSnap(r,o){try{localStorage.setItem("ts_snap_"+r,JSON.stringify(o))}catch{}},
+};
+function connect(){
+  ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws");
+  ws.onopen=()=>{retryMs=800; if(wanted)send(wanted);};
+  ws.onmessage=e=>handle(JSON.parse(e.data));
+  ws.onclose=()=>{setTimeout(connect,retryMs); retryMs=Math.min(retryMs*1.7,8000);};
+}
+function send(m){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(m)); }
+setInterval(()=>send({type:"ping"}),120000); // heartbeat: resets Render's idle timer + liveness
+connect();
+
+/* wake lock: keep the host phone's screen (and socket) alive during live games */
+async function tryWakeLock(){ try{ if(YOU&&YOU.isHost&&navigator.wakeLock) await navigator.wakeLock.request("screen"); }catch{} }
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"){ tryWakeLock(); if(wanted)send(wanted); }});
+
+/* ---------------- flows ---------------- */
+function createGame(){
+  const name=($("j-name").value||store.name||"Host").trim(); if(!name) return homeErr("Enter a name first.");
+  store.name=name;
+  wanted=null;
+  send({type:"create",name,config:{
+    smallBlind:+$("c-sb").value||1, bigBlind:+$("c-bb").value||2, defaultBuyIn:+$("c-buy").value||200,
+    straddleAllowed:$("c-straddle").checked, ritAllowed:$("c-rit").checked,
+  }});
+}
+function joinFromHome(){
+  const code=($("j-code").value||"").toUpperCase().trim();
+  const name=($("j-name").value||store.name||"").trim();
+  if(code.length<4) return homeErr("Enter the room code.");
+  if(!name) return homeErr("Enter a name.");
+  store.name=name; joinRoom(code,name);
+}
+function joinRoom(code,name){
+  room=code;
+  wanted={type:"hello",room:code,token:store.tok(code)||undefined,name:name||store.name||undefined};
+  send(wanted);
+  history.replaceState(null,"","/?g="+code);
+}
+function homeErr(t){ $("home-err").innerHTML=`<div class="notice err">${esc(t)}</div>`; }
+
+/* ---------------- message handling ---------------- */
+function handle(m){
+  switch(m.type){
+    case "pong": return;
+    case "created":
+      room=m.room; store.setTok(room,m.token);
+      wanted={type:"hello",room,token:m.token};
+      history.replaceState(null,"","/?g="+room);
+      return;
+    case "joined_unseated": store.setTok(m.room,m.token); wanted={type:"hello",room:m.room,token:m.token}; return;
+    case "need_name": { const n=store.name||prompt("Your name?")||"Player"; store.name=n;
+      wanted={type:"hello",room:m.room,token:store.tok(m.room)||undefined,name:n}; send(wanted); return; }
+    case "state": onState(m); return;
+    case "unknown_room": onUnknownRoom(m.room); return;
+    case "room_live": if(wanted)send(wanted); return;
+    case "restore_prompt": restoreInfo=m; renderRestore(); return;
+    case "error": flashError(m.message); return;
+    case "ended": alert("Game ended by the host."+(m.state?finalStandings(m.state):"")); location.href="/"; return;
+  }
+}
+function onState(m){
+  S=m.state; YOU=m.you; room=S.code;
+  if(m.snapshot) store.setSnap(room,{snapshot:m.snapshot,savedAt:Date.now(),name:store.name});
+  showScreen("s-table"); renderTable(); tryWakeLock();
+}
+function onUnknownRoom(code){
+  const saved=store.snap(code);
+  if(saved&&saved.snapshot){
+    send({type:"offer_snapshot",room:code,snapshot:saved.snapshot,savedAt:saved.savedAt,fromName:saved.name||store.name||"?"});
+    showScreen("s-restore");
+    $("restore-body").innerHTML=`<div class="notice">Backup sent. Waiting for a restore…</div>`;
+  }else{
+    showScreen("s-restore");
+    $("restore-body").innerHTML=`<div class="notice">Room <b>${esc(code)}</b> isn't running and this phone has no backup of it.
+      If someone else at the table has one, theirs will appear here — otherwise <a href="/" style="color:var(--gold)">start a fresh table</a>.</div>`;
+  }
+}
+function renderRestore(){
+  const r=restoreInfo; if(!r) return;
+  showScreen("s-restore");
+  const when=new Date(r.savedAt).toLocaleTimeString();
+  const streetName=["preflop","flop","turn","river","showdown"][r.seq.street]||"between hands";
+  let html=`<div class="notice">Newest backup: <b>hand ${r.seq.hand}</b>, ${streetName}, ${r.seq.actions} action(s) in —
+    saved ${when} on <b>${esc(r.fromName)}</b>'s phone.</div>`;
+  if(r.canRestore){
+    html+=`<button class="btn gold" onclick='send({type:"restore",room:room})'>
+      ${r.youAreHost?"Restore game (you're the host)":"Restore game and take over as host"}</button>`;
+    if(!r.youAreHost) html+=`<p class="dim">The original host hasn't returned. Restoring makes you the new host — check with the table first.</p>`;
+  }else{
+    html+=`<p class="dim">Waiting for the host to restore. If they don't return in ${Math.ceil((r.waitMs||0)/1000)}s, anyone here can.</p>`;
+    setTimeout(()=>{ if(restoreInfo){restoreInfo.canRestore=true; restoreInfo.waitMs=0; renderRestore();} }, (r.waitMs||0)+400);
+  }
+  $("restore-body").innerHTML=html;
+}
+
+/* ---------------- table rendering ---------------- */
+function showScreen(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id===id)); }
+function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function flashError(t){ $("t-notice").innerHTML=`<div class="notice err">${esc(t)}</div>`;
+  setTimeout(()=>{ if(S) renderTable(); },2600); }
+
+function me(){ return YOU&&YOU.seat>=0 ? S.players.find(p=>p.seat===YOU.seat) : null; }
+
+function renderTable(){
+  $("t-code").textContent=S.code;
+  $("t-hand").textContent=S.hand?`hand ${S.hand}`:"no hands yet";
+  $("t-notice").innerHTML=S.notice?`<div class="notice">${esc(S.notice)}</div>`:"";
+  const inPots=S.pots?S.pots.reduce((a,p)=>a+p.remaining,0):0;
+  const front=S.players.reduce((a,p)=>a+p.committedStreet,0);
+  $("t-pot").textContent=(S.pot+inPots+front)||0;
+  $("t-potlabel").textContent=front?`pot ${S.pot+inPots} + ${front} in front`:"pot";
+  $("t-street").textContent=S.state==="hand"?S.street:(S.state==="showdown"?"showdown":"");
+  $("hostbtn").style.display=YOU&&YOU.isHost?"block":"none";
+
+  // seats
+  const toAct=S.betting?S.betting.toActSeat:-1;
+  $("t-seats").innerHTML=S.players.map(p=>{
+    const badges=[
+      p.seat===S.buttonSeat&&S.hand?`<span class="badge d">D</span>`:"",
+      p.allIn?`<span class="badge allin">ALL-IN</span>`:"",
+      YOU&&p.seat===YOU.seat?`<span class="badge">you</span>`:"",
+    ].join("");
+    return `<li class="seat ${p.seat===toAct?"turn":""} ${p.folded?"folded":""} ${p.connected?"":"gone"}">
+      <div class="badges">${badges}</div>
+      <div class="name">${esc(p.name)}</div>
+      <div class="stackn">${p.stack}</div>
+      <div class="front">${p.committedStreet?`${p.committedStreet} in front`:""}${p.folded?"folded":""}</div>
+      <div class="stackl">stack</div>
+    </li>`;
+  }).join("");
+
+  // street log (current street + earlier streets this hand)
+  const past=Object.entries(S.handLog||{}).map(([st,log])=>logLines(st,log)).join("");
+  $("t-log").innerHTML=past+(S.streetLog&&S.streetLog.length?logLines(S.street||"",S.streetLog):"");
+  const tl=$("t-log"); tl.scrollTop=tl.scrollHeight;
+
+  renderShowdown(); renderIdle(); renderActionBar(); if(YOU&&YOU.isHost) renderDrawer();
+}
+function logLines(street,log){
+  return `<div><b style="color:var(--gold)">${esc(street)}</b></div>`+log.map(e=>
+    `<div><b>${esc(e.name)}</b> ${esc(e.act)}${e.amt?` <span class="amt">${e.amt}</span>`:""}${e.allIn?" (all-in)":""}${e.short?" — short, no reopen":""}</div>`
+  ).join("");
+}
+
+/* idle (between hands) */
+function renderIdle(){
+  const el=$("t-idle");
+  if(S.state!=="idle"){ el.innerHTML=""; return; }
+  let html="";
+  if(S.config.straddleAllowed&&me()){
+    const on=false; // server tracks; we just show the toggle action
+    html+=`<button class="btn ghost" onclick='send({type:"straddle_next"})'>Toggle my straddle for next hand</button>`;
+  }
+  if(!(YOU&&YOU.isHost)) html+=`<p class="waiting" style="margin-top:10px">Waiting for the host to start the next hand…</p>`;
+  el.innerHTML=html;
+}
+
+/* action bar */
+function renderActionBar(){
+  const bar=$("actionbar"), inner=$("actionbar-inner");
+  const p=me();
+  if(S.state!=="hand"||!p||p.folded||!p.inHand){ bar.style.display="none"; return; }
+  bar.style.display="block";
+  const B=S.betting, myTurn=B&&B.toActSeat===YOU.seat;
+  if(!myTurn){
+    const who=S.players.find(q=>q.seat===(B&&B.toActSeat));
+    inner.innerHTML=`<div class="waiting">${who?esc(who.name)+" to act":"…"} · you have <b>${p.stack}</b> behind</div>`;
+    return;
+  }
+  const owe=B.currentBet-p.committedStreet;
+  const minTo=B.currentBet+B.lastFullRaiseSize;
+  const canRaise=!p.acted && p.stack>owe;
+  inner.innerHTML=`
+    <div class="acts">
+      <button class="btn red" onclick='act({type:"fold"})'>Fold</button>
+      ${owe<=0
+        ? `<button class="btn" onclick='act({type:"check"})'>Check</button>`
+        : `<button class="btn" onclick='act({type:"call"})'>Call ${Math.min(owe,p.stack)}</button>`}
+      <button class="btn" onclick='act({type:"allin"})'>All-in ${p.stack}</button>
+    </div>
+    ${canRaise?`
+    <div class="raise-row">
+      <input type="number" id="raise-to" inputmode="numeric" min="${minTo}" max="${p.committedStreet+p.stack}" value="${Math.min(minTo,p.committedStreet+p.stack)}">
+      <button class="btn gold" onclick='act({type:"raise",to:+$("raise-to").value})'>${B.currentBet?"Raise to":"Bet"}</button>
+    </div>
+    <p class="dim" style="margin-top:6px">min ${B.currentBet?"raise to":"bet"} ${minTo} · max ${p.committedStreet+p.stack} (all-in)</p>`
+    : (p.acted&&owe>0?`<p class="dim" style="margin-top:8px">Betting wasn't reopened — call or fold.</p>`:"")}
+  `;
+}
+function act(a){ send({type:"action",action:a}); }
+
+/* showdown / payout */
+let pick={}; let ritSel=1;
+function renderShowdown(){
+  const el=$("t-showdown");
+  if(S.state!=="showdown"||!S.pots){ el.innerHTML=""; pick={}; return; }
+  ritSel=S.ritRuns||1;
+  const nameOf=s=>{const p=S.players.find(q=>q.seat===s);return p?p.name:"seat "+s;};
+  if(!(YOU&&YOU.isHost)){
+    el.innerHTML=S.pots.map((p,i)=>`<div class="potcard"><h4>${potName(i)} — <span>${p.amount}</span></h4>
+      <div class="dim">eligible: ${p.eligible.map(nameOf).join(", ")}</div></div>`).join("")
+      +`<p class="waiting">Host awards the pots.</p>`;
+    return;
+  }
+  const anyAllIn=S.players.some(p=>p.allIn&&!p.folded);
+  let html="";
+  if(S.config.ritAllowed&&anyAllIn){
+    html+=`<div class="potcard"><h4>Runs</h4><div class="rungrid">`+
+      [1,2,3,4].map(n=>`<button class="wpick ${ritSel===n?"sel":""}" onclick="setRuns(${n})">${n}×</button>`).join("")+
+      `</div><p class="dim" style="margin-top:6px">Running multiple boards needs everyone all-in to agree at the table.</p></div>`;
+  }
+  html+=S.pots.map((p,i)=>{
+    let runs="";
+    for(let r=0;r<ritSel;r++){
+      runs+=`<div class="runlabel">${ritSel>1?`Run ${r+1} winner(s)`:"Winner(s)"} — tap to select, tap two to split</div><div class="rungrid">`+
+        p.eligible.map(s=>{
+          const sel=(pick[i]?.[r]||[]).includes(s);
+          return `<button class="wpick ${sel?"sel":""}" onclick="togglePick(${i},${r},${s})">${esc(nameOf(s))}</button>`;
+        }).join("")+`</div>`;
+    }
+    return `<div class="potcard"><h4>${potName(i)} — <span>${p.amount}</span></h4>${runs}</div>`;
+  }).join("");
+  const ready=S.pots.every((p,i)=>{ for(let r=0;r<ritSel;r++) if(!(pick[i]?.[r]||[]).length) return false; return true; });
+  html+=`<button class="btn gold" ${ready?"":"disabled"} onclick="submitAwards()">Pay the pots</button>`;
+  el.innerHTML=html;
+}
+function potName(i){ return i===0?(S.pots.length>1?"Main pot":"Pot"):`Side pot ${i}`; }
+function setRuns(n){ ritSel=n; pick={}; send({type:"set_rit",runs:n}); }
+function togglePick(pot,run,seat){
+  pick[pot]=pick[pot]||{}; const a=pick[pot][run]=pick[pot][run]||[];
+  const j=a.indexOf(seat); j>=0?a.splice(j,1):a.push(seat);
+  renderShowdown();
+}
+function submitAwards(){
+  const awards=S.pots.map((p,i)=>({pot:i,runs:Array.from({length:ritSel},(_,r)=>pick[i][r])}));
+  pick={};
+  send({type:"award",awards});
+}
+
+/* ---------------- host drawer ---------------- */
+function toggleDrawer(on){ $("drawer").classList.toggle("on",on); if(on) renderDrawer(); }
+function renderDrawer(){
+  if(!S) return;
+  const idle=S.state==="idle";
+  let html=`<h3>Host controls</h3>`;
+  html+=`<p class="dim" style="margin-bottom:10px">Share to join: <b>${location.origin}/?g=${S.code}</b></p>`;
+  if(idle) html+=`<button class="btn gold" onclick='send({type:"start_hand"});toggleDrawer(false)'>Deal next hand</button>`;
+  else if(S.state==="hand"){
+    const who=S.players.find(p=>p.seat===S.betting?.toActSeat);
+    html+=`<button class="btn red" onclick='send({type:"force_fold",seat:${S.betting?.toActSeat}})'>Force-fold ${esc(who?who.name:"")} (their turn)</button>`;
+  }
+  if(S.unseated&&S.unseated.length){
+    html+=`<h3 style="margin-top:18px">Waiting to sit</h3>`;
+    const openSeats=S.players.filter(p=>!p.connected);
+    for(const u of S.unseated){
+      html+=`<div class="hrow"><div class="grow"><b>${esc(u.name)}</b></div>
+        <button class="mini gold" onclick='seatQueued("${u.id}")' ${idle?"":"disabled"}>Seat + buy-in</button>
+        ${openSeats.length?`<button class="mini" onclick='assignQueued("${u.id}")'>Give a seat</button>`:""}
+      </div>`;
+    }
+    if(!idle) html+=`<p class="dim">New buy-ins seat between hands; taking over a disconnected seat works any time.</p>`;
+  }
+  html+=`<h3 style="margin-top:18px">Players</h3>`;
+  for(const p of S.players){
+    html+=`<div class="hrow"><div class="grow"><b>${esc(p.name)}</b> <span class="dim">· ${p.stack}${p.connected?"":" · away"}</span></div>
+      <button class="mini" onclick='addChips(${p.seat})' ${idle?"":"disabled"}>±chips</button>
+      ${p.seat!==YOU.seat?`<button class="mini" onclick='send({type:"transfer_host",seat:${p.seat}})'>Make host</button>
+      <button class="mini red" onclick='if(confirm("Remove ${esc(p.name)}? Their stack cashes out."))send({type:"remove_player",seat:${p.seat}})'>Remove</button>`:""}
+    </div>`;
+  }
+  html+=`<hr class="split"><button class="btn ghost" style="color:var(--danger)" onclick='if(confirm("End the game for everyone?"))send({type:"end_game"})'>End game</button>`;
+  $("drawer-panel").innerHTML=html;
+}
+function seatQueued(uid){ const b=prompt("Buy-in amount?",S.config.defaultBuyIn); if(b==null)return;
+  send({type:"seat_player",uid,buyIn:+b}); }
+function assignQueued(uid){
+  const open=S.players.filter(p=>!p.connected);
+  const pickSeat=open.length===1?open[0].seat:+prompt("Which seat number? Disconnected: "+open.map(p=>`${p.seat} (${p.name}, ${p.stack})`).join(", "));
+  if(Number.isFinite(pickSeat)) send({type:"assign_seat",uid,seat:pickSeat});
+}
+function addChips(seat){ const a=prompt("Add (or negative to deduct) how many chips?","100"); if(a==null)return;
+  send({type:"add_chips",seat,amount:+a}); }
+function finalStandings(state){
+  try{ return "\n\nFinal stacks:\n"+state.players.map(p=>`${p.name}: ${p.stack}`).join("\n"); }catch{ return ""; }
+}
+
+/* ---------------- boot ---------------- */
+(function(){
+  $("j-name").value=store.name;
+  const g=new URLSearchParams(location.search).get("g");
+  if(g){ $("j-code").value=g.toUpperCase();
+    if(store.tok(g.toUpperCase())||store.name) joinRoom(g.toUpperCase()); }
+})();
+</script>
+</body>
+</html>
