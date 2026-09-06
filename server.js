@@ -581,7 +581,7 @@ function publicState(g) {
       };
     }),
     unseated: g.unseated.map((u) => {
-      return { id: u.id, name: u.name };
+      return { id: u.id, name: u.name, buyIn: u.buyIn || 0 };
     }),
     seq: seqOf(g),
   };
@@ -684,7 +684,14 @@ function handle(ws, m) {
     if (!m.name) return send(ws, { type: "need_name", room });
     const token = rid();
     ws.meta.token = token;
-    g.unseated.push({ id: rid(4), token, name: String(m.name).slice(0, 20), ws });
+    const reqBuy = Math.floor(m.buyIn);
+    g.unseated.push({
+      id: rid(4),
+      token,
+      name: String(m.name).slice(0, 20),
+      buyIn: Number.isFinite(reqBuy) && reqBuy > 0 ? reqBuy : 0, // player's requested buy-in; host approves
+      ws,
+    });
     send(ws, { type: "joined_unseated", room, token });
     return broadcast(g);
   }
@@ -748,8 +755,9 @@ function handle(ws, m) {
         return x.id === m.uid;
       });
       if (!u) throw "They're gone.";
-      const buy = Math.floor(m.buyIn);
-      if (!Number.isFinite(buy) || buy <= 0) throw "Enter a buy-in amount first.";
+      // the player's requested buy-in; m.buyIn only as a host-side fallback/override
+      const buy = Math.floor(m.buyIn ?? u.buyIn);
+      if (!Number.isFinite(buy) || buy <= 0) throw "No buy-in set — ask them to rejoin with one.";
       const seat = seatPlayer(
         g,
         u.token,

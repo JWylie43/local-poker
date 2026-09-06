@@ -534,6 +534,10 @@
           <label for="j-name">Your name</label>
           <input id="j-name" placeholder="Name" maxlength="20" />
         </div>
+        <div class="field">
+          <label for="j-buy">Your buy-in (the host approves it)</label>
+          <input id="j-buy" type="number" inputmode="numeric" min="1" placeholder="e.g. 200" />
+        </div>
       </div>
       <hr class="split" />
       <div class="stack-v">
@@ -626,6 +630,9 @@
         setTok(r, t) {
           localStorage.setItem("ts_tok_" + r, t);
         },
+        clearTok(r) {
+          localStorage.removeItem("ts_tok_" + r);
+        },
         snap(r) {
           try {
             return JSON.parse(localStorage.getItem("ts_snap_" + r));
@@ -693,18 +700,22 @@
       function joinFromHome() {
         const code = ($("j-code").value || "").toUpperCase().trim();
         const name = ($("j-name").value || "").trim();
+        const buy = Math.floor(+$("j-buy").value);
         if (code.length < 4) return homeErr("Enter the room code.");
         if (!name) return homeErr("Enter a name.");
+        if (store.tok(code)) return joinRoom(code); // you already have a seat — reconnect
+        if (!(buy > 0)) return homeErr("Enter your buy-in.");
         store.name = name;
-        joinRoom(code, name);
+        joinRoom(code, name, buy);
       }
-      function joinRoom(code, name) {
+      function joinRoom(code, name, buyIn) {
         room = code;
         wanted = {
           type: "hello",
           room: code,
           token: store.tok(code) || undefined,
-          name: name || store.name || undefined,
+          name: name || undefined,
+          buyIn: buyIn || undefined,
         };
         send(wanted);
         enterRoomUrl(code);
@@ -756,15 +767,12 @@
             wanted = { type: "hello", room: m.room, token: m.token };
             return;
           case "need_name": {
-            const n = store.name || prompt("Your name?") || "Player";
-            store.name = n;
-            wanted = {
-              type: "hello",
-              room: m.room,
-              token: store.tok(m.room) || undefined,
-              name: n,
-            };
-            send(wanted);
+            // stale or missing token — join deliberately from the home screen
+            wanted = null;
+            store.clearTok(m.room);
+            $("j-code").value = m.room;
+            showScreen("s-home");
+            homeErr(`Enter your name and buy-in to join ${esc(m.room)}.`);
             return;
           }
           case "state":
@@ -878,7 +886,7 @@
         if (YOU && YOU.isHost && S.unseated && S.unseated.length) {
           const who = S.unseated
             .map((u) => {
-              return `<b>${esc(u.name)}</b>`;
+              return `<b>${esc(u.name)}</b>${u.buyIn > 0 ? ` (${u.buyIn})` : ""}`;
             })
             .join(", ");
           noticeHtml += `<div class="notice">${who} ${S.unseated.length === 1 ? "wants" : "want"} to sit —
@@ -1259,10 +1267,11 @@
           html += `<h3 style="margin-top:18px">Waiting to sit</h3>`;
           for (const u of S.unseated) {
             const uid = u.id;
+            const asked = u.buyIn > 0; // the player set their own buy-in; the host just approves
             html += `<div class="potcard">
-          <div style="margin-bottom:6px"><b>${esc(u.name)}</b></div>
+          <div style="margin-bottom:6px"><b>${esc(u.name)}</b>${asked ? ` wants to buy in for <b style="color:var(--gold)">${u.buyIn}</b>` : ""}</div>
           <div class="row">
-            <input id="buy-${uid}" type="number" inputmode="numeric" min="1" placeholder="Buy-in (e.g. ${S.config.defaultBuyIn})" oninput="syncDrawerButtons()" />
+            ${asked ? "" : `<input id="buy-${uid}" type="number" inputmode="numeric" min="1" placeholder="Buy-in (they didn't set one)" oninput="syncDrawerButtons()" />`}
             <select id="seatsel-${uid}">${freeSeats
               .map((s) => {
                 return `<option value="${s}">Seat ${s}</option>`;
@@ -1271,14 +1280,14 @@
           </div>
           ${cbtn(
             "add-" + uid,
-            "Add to the table",
+            asked ? `Accept ${esc(u.name)} for ${u.buyIn}` : "Add to the table",
             "btn gold",
             () => {
-              const buy = Math.floor(+$("buy-" + uid).value);
-              if (!(buy > 0)) return;
+              const buy = asked ? undefined : Math.floor(+$("buy-" + uid).value);
+              if (!asked && !(buy > 0)) return;
               send({ type: "seat_player", uid, buyIn: buy, seat: +$("seatsel-" + uid).value });
             },
-            `id="addbtn-${uid}" style="margin-top:8px" disabled`
+            `id="addbtn-${uid}" style="margin-top:8px"${asked ? "" : " disabled"}`
           )}
         </div>`;
           }

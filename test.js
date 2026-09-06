@@ -297,17 +297,21 @@ const total = (st) => {
   });
   const room2 = H.room;
 
-  I.send({ type: "hello", room: room2, name: "I" });
+  I.send({ type: "hello", room: room2, name: "I", buyIn: 200 }); // player requests their own buy-in
   await I.wait((m) => {
     return m.type === "joined_unseated";
   });
   await sleep(100);
-  H.send({ type: "seat_player", uid: H.state.unseated[0].id, buyIn: 200, seat: 5 });
+  ok(H.state.unseated[0].buyIn === 200, "requested buy-in visible to the host");
+  H.send({ type: "seat_player", uid: H.state.unseated[0].id, seat: 5 }); // host accepts, no amount
   await H.wait((m) => {
     return m.type === "state" && m.state.players.length === 2;
   });
   await sleep(80);
-  ok(player(H, 5) && player(H, 5).stack === 200, "seat selection honored (I at seat 5)");
+  ok(
+    player(H, 5) && player(H, 5).stack === 200,
+    "seat selection honored, player's requested buy-in used (I at seat 5)"
+  );
 
   H.send({ type: "start_hand" });
   await H.wait((m) => {
